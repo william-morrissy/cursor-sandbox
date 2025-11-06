@@ -5,14 +5,11 @@ from typing import List, Dict, Optional
 
 def get_user_batch(users: List[Dict], batch_size: int = 10) -> List[List[Dict]]:
     """
-    Split users into batches.
-    
-    Bug: Off-by-one error in slicing causes overlap between batches.
+    Split users into batches of the specified size.
     """
     batches = []
     for i in range(0, len(users), batch_size):
-        # BUG: This includes an extra item, causing overlap
-        batches.append(users[i:i+batch_size+1])
+        batches.append(users[i:i+batch_size])
     return batches
 
 
@@ -35,12 +32,12 @@ def calculate_user_score(user: Dict) -> float:
 
 async def fetch_user_data(user_id: int, db):
     """
-    Fetch user data from database.
+    Fetch user data from database using parameterized queries.
     
-    Issues: No caching, SQL injection vulnerability, no error handling.
+    Issues: No caching, no error handling.
     """
-    # Security issue: vulnerable to SQL injection
-    query = f"SELECT * FROM users WHERE id = {user_id}"
-    result = await db.execute(query)
+    # Use parameterized query to prevent SQL injection
+    query = "SELECT * FROM users WHERE id = ?"
+    result = await db.execute(query, (user_id,))
     return result
 
