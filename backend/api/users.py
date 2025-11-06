@@ -5,14 +5,11 @@ from typing import List, Dict, Optional
 
 def get_user_batch(users: List[Dict], batch_size: int = 10) -> List[List[Dict]]:
     """
-    Split users into batches.
-    
-    Bug: Off-by-one error in slicing causes overlap between batches.
+    Split users into batches of the specified size.
     """
     batches = []
     for i in range(0, len(users), batch_size):
-        # BUG: This includes an extra item, causing overlap
-        batches.append(users[i:i+batch_size+1])
+        batches.append(users[i:i+batch_size])
     return batches
 
 
@@ -35,12 +32,32 @@ def calculate_user_score(user: Dict) -> float:
 
 async def fetch_user_data(user_id: int, db):
     """
-    Fetch user data from database.
+    Fetch user data from database using parameterized queries to prevent SQL injection.
     
-    Issues: No caching, SQL injection vulnerability, no error handling.
+    Args:
+        user_id: The ID of the user to fetch (must be a positive integer)
+        db: Database connection object with execute/fetch methods
+    
+    Returns:
+        User data dictionary or None if user not found
+    
+    Raises:
+        ValueError: If user_id is invalid
+        RuntimeError: If database operation fails
     """
-    # Security issue: vulnerable to SQL injection
-    query = f"SELECT * FROM users WHERE id = {user_id}"
-    result = await db.execute(query)
-    return result
+    # Input validation
+    if not isinstance(user_id, int):
+        raise ValueError("user_id must be an integer")
+    if user_id <= 0:
+        raise ValueError("user_id must be positive")
+    
+    try:
+        # Use parameterized query to prevent SQL injection
+        # This works with most async database libraries (asyncpg, aiomysql, aiosqlite, etc.)
+        # Adjust placeholder style if needed: ? (SQLite), $1 (PostgreSQL), %s (MySQL)
+        query = "SELECT * FROM users WHERE id = ?"
+        result = await db.execute(query, (user_id,))
+        return result
+    except Exception as e:
+        raise RuntimeError(f"Database error while fetching user {user_id}: {e}") from e
 
